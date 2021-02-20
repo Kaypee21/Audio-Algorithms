@@ -1,0 +1,83 @@
+%matplotlib inline
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+class FIR_loop():
+    def __init__(self, h):
+        self.h = h
+        self.ix = 0
+        self.M = len(h)
+        self.buf = np.zeros(self.M)
+
+    def filter(self, x):
+        y = 0
+        self.buf[self.ix] = x
+        for n in range(0, self.M):
+            y += self.h[n] * self.buf[(self.ix+self.M-n) % self.M]
+        self.ix = (self.ix + 1) % self.M
+        return y
+# simple moving average:
+h = np.ones(5)/5
+
+f = FIR_loop(h)
+for n in range(0, 10):
+    print(f.filter(n), end=", ")
+ # let's use a simple moving average:
+M = 5
+h = np.ones(M)/float(M)
+
+# let's build a signal with a ramp and a plateau
+x = np.concatenate((np.arange(1, 9), np.ones(5) * 8, np.arange(8,0,-1)))
+plt.stem(x);
+print('signal length: ', len(x))
+y = np.convolve(x, h, mode='valid')
+print('signal length: ', len(y))
+plt.stem(y);
+y = np.convolve(x, h, mode='full')
+print('signal length: ', len(y))
+plt.stem(y);
+y = np.convolve(x, h, mode='same')
+print('signal length: ', len(y))
+plt.stem(y);
+def cconv(x, h):
+    # as before, we assume len(h) < len(x)
+    L = len(x)
+    xp = np.concatenate((x,x))
+    # full convolution
+    y = np.convolve(xp, h)
+    return y[L:2*L]
+ y = cconv(x, h)
+print('signal length: ', len(y))
+plt.stem(y);
+y = cconv(np.concatenate((x, np.zeros(M-1))), h)
+print('signal length: ', len(y))
+plt.stem(y);
+# plot in red the difference with the standard conv
+plt.stem(y - np.convolve(x, h, mode='full'), markerfmt='ro');
+def DFTconv(x, h, mode='full'):
+    # we want the compute the full convolution
+    N = len(x)
+    M = len(h)
+    X = np.fft.fft(x, n=N+M-1)
+    H = np.fft.fft(h, n=N+M-1)
+    # we're using real-valued signals, so drop the imaginary part
+    y = np.real(np.fft.ifft(X * H))
+    if mode == 'valid':
+        # only N-M+1 points, starting at M-1
+        return y[M-1:N]
+    elif mode == 'same':
+        return y[int((M-1)/2):int((M-1)/2)+N]
+    else:
+        return y
+y = np.convolve(x, h, mode='valid')
+print('signal length: ', len(y))
+plt.stem(y);
+y = DFTconv(x, h, mode='valid')
+print('signal length: ', len(y))
+plt.stem(y, markerfmt='ro');
+y = np.convolve(x, h, mode='same')
+print('signal length: ', len(y))
+plt.stem(y);
+y = DFTconv(x, h, mode='same')
+print('signal length: ', len(y))
+plt.stem(y, markerfmt='ro');
